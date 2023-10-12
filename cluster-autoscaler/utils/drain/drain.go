@@ -117,13 +117,38 @@ func isLocalVolume(volume *apiv1.Volume) bool {
 
 // HasSafeToEvictAnnotation checks if pod has PodSafeToEvictKey annotation.
 func HasSafeToEvictAnnotation(pod *apiv1.Pod) bool {
+    if evictionOverride(pod) {
+		return true
+	}
 	return pod.GetAnnotations()[PodSafeToEvictKey] == "true"
 }
 
 // HasNotSafeToEvictAnnotation checks if pod has PodSafeToEvictKey annotation
 // set to false.
 func HasNotSafeToEvictAnnotation(pod *apiv1.Pod) bool {
-	return pod.GetAnnotations()[PodSafeToEvictKey] == "false"
+    if evictionOverride(pod) {
+		return false
+	}
+	return pod.GetAnnotations()[PodSafeToEvictKey] == "false" || hasNeverSafeToEvictAnnotation(pod)
+}
+
+// Override the eviction status based on downtime hours
+func evictionOverride(pod *apiv1.Pod) bool {
+	safeToEvictHours, override := os.LookupEnv("SAFE_TO_EVICT_HOURS")
+	if override && !hasNeverSafeToEvictAnnotation(pod) {
+		hour, _ , _ := time.Now().Clock()
+		s := strings.Split(safeToEvictHours,",")
+		for _, ele := range s {
+			if strconv.Itoa(hour) == ele {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasNeverSafeToEvictAnnotation(pod *apiv1.Pod) bool {
+	return pod.GetAnnotations()[PodSafeToEvictKey] == "never"
 }
 
 // IsPodLongTerminating checks if a pod has been terminating for a long time (pod's terminationGracePeriod + an additional const buffer)
