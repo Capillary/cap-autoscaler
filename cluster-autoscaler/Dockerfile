@@ -1,4 +1,4 @@
-FROM golang:1.12 as builder
+FROM golang:1.18 as builder
 RUN ls /go
 WORKDIR /go/src/k8s.io/autoscaler/cluster-autoscaler/
 COPY . .
